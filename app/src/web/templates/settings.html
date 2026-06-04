@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% set active_page = "settings" %}
+
+{% block content %}
+
+<h1>Paramètres</h1>
+
+{# ── Alertes ── #}
+{% if run_state.running %}
+<div class="alert alert-warning">
+  ⏳ Un run est en cours (<strong>{{ run_state.command }}</strong>).
+  Les paramètres ne peuvent pas être modifiés pendant un run.
+</div>
+{% endif %}
+
+{% if saved_ok %}
+<div class="alert alert-success">
+  ✅ Paramètres sauvegardés.
+  {% if backup_path %}<br><small style="font-family:monospace">Sauvegarde : {{ backup_path }}</small>{% endif %}
+</div>
+{% endif %}
+
+{% if error_msg %}
+<div class="alert alert-danger">❌ {{ error_msg }}</div>
+{% endif %}
+
+<form method="post" action="/settings">
+
+  {# ═══════════════════════════════════════════════
+     1. EXPORT
+  ════════════════════════════════════════════════ #}
+  <div class="settings-section">
+    <h2>📤 Export</h2>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="export_balanced" name="export_balanced"
+             {% if profile.get('export', {}).get('balanced_by_source') %}checked{% endif %}>
+      <label for="export_balanced">Export équilibré par source (<code>balanced_by_source</code>)</label>
+    </div>
+    <p class="settings-note" style="margin-left:24px;margin-bottom:12px">
+      Si activé, le rapport prend jusqu'à <em>max_per_source</em> offres par plateforme au lieu du top global.
+    </p>
+
+    <div class="field-row">
+      <div class="field-group">
+        <label for="export_max">Max offres par source</label>
+        <input type="number" id="export_max" name="export_max_per_source" min="1" max="20"
+               value="{{ profile.get('export', {}).get('max_per_source', 3) }}">
+        <span class="hint">Plafond dur par plateforme</span>
+      </div>
+      <div class="field-group">
+        <label for="export_target_per_source">Cible par source</label>
+        <input type="number" id="export_target_per_source" name="export_target_per_source" min="1" max="20"
+               value="{{ profile.get('export', {}).get('target_per_source', 3) }}">
+        <span class="hint">Objectif idéal avant fallback</span>
+      </div>
+      <div class="field-group">
+        <label for="export_global_target">Cible globale</label>
+        <input type="number" id="export_global_target" name="export_global_target" min="1" max="50"
+               value="{{ profile.get('export', {}).get('global_target', 12) }}">
+        <span class="hint">Nombre total d'offres cible</span>
+      </div>
+    </div>
+
+    <div class="checkbox-row" style="margin-bottom:12px">
+      <input type="checkbox" id="export_allow_fallback" name="export_allow_fallback"
+             {% if profile.get('export', {}).get('allow_source_fallback', True) %}checked{% endif %}>
+      <label for="export_allow_fallback">Fallback inter-sources si une source n'atteint pas sa cible (<code>allow_source_fallback</code>)</label>
+    </div>
+
+    <p style="font-size:.84rem;font-weight:600;color:#374151;margin-bottom:8px">Statuts inclus dans l'export</p>
+    <div class="checkbox-row">
+      <input type="checkbox" id="inc_sel" name="export_inc_selected"
+             {% if 'selected' in profile.get('export', {}).get('include_statuses', ['selected','review']) %}checked{% endif %}>
+      <label for="inc_sel">⭐ Selected</label>
+    </div>
+    <div class="checkbox-row">
+      <input type="checkbox" id="inc_rev" name="export_inc_review"
+             {% if 'review' in profile.get('export', {}).get('include_statuses', ['selected','review']) %}checked{% endif %}>
+      <label for="inc_rev">🔍 Review</label>
+    </div>
+
+    {% if profile.get('export', {}).get('source_order') %}
+    <p class="settings-note" style="margin-top:12px">
+      Ordre des sources (lecture seule — V2.1) :
+      {{ profile.get('export', {}).get('source_order', []) | join(' → ') }}
+    </p>
+    {% endif %}
+  </div>
+
+  {# ═══════════════════════════════════════════════
+     2. SOURCES
+  ════════════════════════════════════════════════ #}
+  <div class="settings-section">
+    <h2>📡 Sources actives</h2>
+    <div class="source-grid">
+
+      {# WTTJ — pas de flag enabled, toujours actif via --wttj-interactive #}
+      <div class="source-card">
+        <h3>WTTJ</h3>
+        <p class="settings-note" style="margin-bottom:10px">
+          Activé via <code>--wttj-interactive</code> (CLI). Toujours actif si la session est valide.
+        </p>
+        <div class="field-group">
+          <label for="wttj_max_jobs">Max offres</label>
+          <input type="number" id="wttj_max_jobs" name="wttj_max_jobs" min="1" max="500"
+                 value="{{ profile.get('wttj', {}).get('max_jobs', 50) }}">
+        </div>
+        <div class="field-group" style="margin-top:10px">
+          <label for="wttj_max_pages">Max pages</label>
+          <input type="number" id="wttj_max_pages" name="wttj_max_pages" min="1" max="10"
+                 value="{{ profile.get('wttj', {}).get('max_pages', 3) }}">
+        </div>
+      </div>
+
+      {# HelloWork #}
+      <div class="source-card">
+        <h3>HelloWork</h3>
+        <div class="checkbox-row" style="margin-bottom:10px">
+          <input type="checkbox" id="hw_enabled" name="hw_enabled"
+                 {% if profile.get('hellowork', {}).get('enabled', True) %}checked{% endif %}>
+          <label for="hw_enabled">Activé</label>
+        </div>
+        <div class="field-group">
+          <label for="hw_max_jobs">Max offres</label>
+          <input type="number" id="hw_max_jobs" name="hw_max_jobs" min="1" max="200"
+                 value="{{ profile.get('hellowork', {}).get('max_jobs', 20) }}">
+        </div>
+      </div>
+
+      {# LinkedIn #}
+      <div class="source-card">
+        <h3>LinkedIn</h3>
+        <div class="checkbox-row">
+          <input type="checkbox" id="li_enabled" name="li_enabled"
+                 {% if profile.get('linkedin', {}).get('enabled', False) %}checked{% endif %}>
+          <label for="li_enabled">Activé</label>
+        </div>
+        <div class="checkbox-row" style="margin-bottom:10px">
+          <input type="checkbox" id="li_interactive" name="li_interactive"
+                 {% if profile.get('linkedin', {}).get('interactive', True) %}checked{% endif %}>
+          <label for="li_interactive">Mode interactif (Chrome)</label>
+        </div>
+        <div class="field-group">
+          <label for="li_limit">Limite par run</label>
+          <input type="number" id="li_limit" name="li_limit" min="1" max="20"
+                 value="{{ profile.get('linkedin', {}).get('limit_per_run', 3) }}">
+        </div>
+        <p class="settings-note" style="margin-top:8px">
+          Les offres LinkedIn restent en <em>review</em> (validation manuelle requise).
+        </p>
+      </div>
+
+      {# Indeed #}
+      <div class="source-card">
+        <h3>Indeed</h3>
+        <div class="checkbox-row" style="margin-bottom:10px">
+          <input type="checkbox" id="in_enabled" name="in_enabled"
+                 {% if profile.get('indeed', {}).get('enabled', True) %}checked{% endif %}>
+          <label for="in_enabled">Activé</label>
+        </div>
+        <div class="field-group">
+          <label for="in_max_pages">Max pages par run</label>
+          <input type="number" id="in_max_pages" name="in_max_pages" min="1" max="5"
+                 value="{{ profile.get('indeed', {}).get('max_pages_per_run', 1) }}">
+          <span class="hint">Max 5 (risque de login wall au-delà de 1)</span>
+        </div>
+      </div>
+
+    </div>
+    <p class="settings-note" style="margin-top:12px">
+      Les URLs de recherche (search_urls, search_queries) ne sont pas éditables ici — modifiez <code>candidate_profile.yaml</code> directement.
+    </p>
+  </div>
+
+  {# ═══════════════════════════════════════════════
+     3. CIBLAGE
+  ════════════════════════════════════════════════ #}
+  <div class="settings-section">
+    <h2>🎯 Ciblage</h2>
+    <p class="settings-note" style="margin-bottom:16px">
+      Un élément par ligne. Les listes marquées * ne peuvent pas être vides.
+    </p>
+
+    <div class="field-row">
+      <div class="field-group" style="flex:1;min-width:280px">
+        <label for="target_titles">Titres cibles* <span class="hint">(doivent être dans le titre ou la description)</span></label>
+        <textarea id="target_titles" name="target_titles" class="field-textarea" rows="8">{{ profile.get('target_titles', []) | join('\n') }}</textarea>
+      </div>
+      <div class="field-group" style="flex:1;min-width:280px">
+        <label for="locations">Localisations*</label>
+        <textarea id="locations" name="locations" class="field-textarea" rows="8">{{ profile.get('locations', []) | join('\n') }}</textarea>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-group" style="flex:1;min-width:280px">
+        <label for="must_have">Must-have keywords* <span class="hint">(offre rejetée si aucun détecté)</span></label>
+        <textarea id="must_have" name="must_have" class="field-textarea" rows="6">{{ profile.get('must_have_keywords', []) | join('\n') }}</textarea>
+      </div>
+      <div class="field-group" style="flex:1;min-width:280px">
+        <label for="nice_to_have">Nice-to-have keywords</label>
+        <textarea id="nice_to_have" name="nice_to_have" class="field-textarea" rows="6">{{ profile.get('nice_to_have_keywords', []) | join('\n') }}</textarea>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-group" style="flex:1;min-width:280px">
+        <label for="exclude_kw">Mots-clés exclus <span class="hint">(peut être vide)</span></label>
+        <textarea id="exclude_kw" name="exclude_kw" class="field-textarea" rows="8">{{ profile.get('exclude_keywords', []) | join('\n') }}</textarea>
+      </div>
+      <div class="field-group" style="flex:1;min-width:280px;justify-content:flex-start;padding-top:22px">
+        <p class="settings-note">
+          Les champs <strong>work_modes</strong>, <strong>experience_level</strong> et
+          <strong>contract_types</strong> ne sont pas exposés ici car ils sont utilisés
+          directement par le moteur de scoring. Modifiez-les dans
+          <code>candidate_profile.yaml</code> si nécessaire.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# ═══════════════════════════════════════════════
+     4. PIPELINE
+  ════════════════════════════════════════════════ #}
+  <div class="settings-section">
+    <h2>⚙ Pipeline</h2>
+    <div class="field-row">
+      <div class="field-group">
+        <label for="pipeline_pending_limit">Seuil pending_limit</label>
+        <input type="number" id="pipeline_pending_limit" name="pipeline_pending_limit" min="1" max="100"
+               value="{{ profile.get('pipeline', {}).get('pending_limit', 10) }}">
+        <span class="hint">Bloque le run si plus de N offres non traitées</span>
+      </div>
+    </div>
+    <p class="settings-note">
+      Si le nombre d'offres non traitées dépasse ce seuil, le run complet est bloqué (CLI et UI).
+      Utilisez <code>--force-run</code> pour bypasser en ligne de commande.
+      <a href="/maintenance" style="color:#2563eb">→ Voir la page Maintenance</a>
+    </p>
+  </div>
+
+  {# ═══════════════════════════════════════════════
+     5. SAUVEGARDES
+  ════════════════════════════════════════════════ #}
+  {% if backups %}
+  <div class="settings-section">
+    <h2>🗂 Sauvegardes récentes</h2>
+    <p class="settings-note" style="margin-bottom:8px">
+      Une sauvegarde est créée automatiquement à chaque modification. Les 5 dernières :
+    </p>
+    <ul class="backup-list">
+      {% for fn in backups %}
+      <li>📄 {{ fn }}</li>
+      {% endfor %}
+    </ul>
+    <p class="settings-note" style="margin-top:8px">
+      Chemin : <code>app/config/backups/</code>
+    </p>
+  </div>
+  {% endif %}
+
+  {# ── Bouton sauvegarde ── #}
+  <div class="save-bar">
+    <button type="submit" class="btn btn-success run-btn"
+            {% if run_state.running %}disabled{% endif %}
+            onclick="return confirm('Sauvegarder les paramètres ?\n\nUne sauvegarde du fichier actuel sera créée automatiquement.')">
+      💾 Sauvegarder les paramètres
+    </button>
+    <span class="action-hint" style="margin-left:14px">
+      Les commentaires du YAML seront retirés lors de la sauvegarde. Une copie de sauvegarde est créée automatiquement.
+    </span>
+  </div>
+
+</form>
+
+{% endblock %}

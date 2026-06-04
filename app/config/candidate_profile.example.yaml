@@ -1,0 +1,229 @@
+# =============================================================================
+# candidate_profile.example.yaml — Profil candidat exemple (générique)
+#
+# Copiez ce fichier vers candidate_profile.yaml et adaptez à votre profil :
+#   copy app\config\candidate_profile.example.yaml app\config\candidate_profile.yaml
+#
+# Ce fichier est versionné comme référence. candidate_profile.yaml est ignoré
+# par git car il peut contenir des données personnelles.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Titres de poste ciblés
+# L'offre doit contenir au moins un de ces titres pour être sélectionnée.
+# ---------------------------------------------------------------------------
+target_titles:
+  - Développeur Python
+  - Développeur Python Junior
+  - Ingénieur Logiciel
+  - Software Engineer
+  - Backend Developer
+  - Backend Engineer
+  - Développeur Backend
+  - Ingénieur Backend
+
+# ---------------------------------------------------------------------------
+# Localisations acceptées
+# ---------------------------------------------------------------------------
+locations:
+  - Paris
+  - Île-de-France
+  - Ile-de-France
+  - Lyon
+  - Bordeaux
+  - Toulouse
+  - Marseille
+  - remote
+  - full remote
+
+# ---------------------------------------------------------------------------
+# Modes de travail acceptés
+# ---------------------------------------------------------------------------
+work_modes:
+  - remote
+  - hybrid
+  - hybride
+  - télétravail
+  - télétravail hybride
+
+# ---------------------------------------------------------------------------
+# Niveaux d'expérience ciblés
+# Les offres exigeant explicitement plus seront rejetées.
+# ---------------------------------------------------------------------------
+experience_level:
+  - junior
+  - entry level
+  - associate
+  - débutant
+  - première expérience
+  - 1 an
+  - 2 ans
+  - 1 à 2 ans
+  - 2 à 3 ans
+  - asap
+
+# ---------------------------------------------------------------------------
+# Types de contrat acceptés
+# ---------------------------------------------------------------------------
+contract_types:
+  - permanent
+  - full-time
+  - cdi
+
+# ---------------------------------------------------------------------------
+# Mots-clés obligatoires (must-have)
+# Une offre sans aucun de ces mots-clés sera rejetée automatiquement.
+# Adaptez à vos technologies principales.
+# ---------------------------------------------------------------------------
+must_have_keywords:
+  - python
+  - api
+  - backend
+  - sql
+  - git
+
+# ---------------------------------------------------------------------------
+# Mots-clés souhaitables (nice-to-have)
+# Augmentent le score de l'offre sans la rendre obligatoire.
+# ---------------------------------------------------------------------------
+nice_to_have_keywords:
+  - fastapi
+  - django
+  - flask
+  - postgresql
+  - redis
+  - docker
+  - kubernetes
+  - ci/cd
+  - github
+  - gitlab
+  - tests
+  - pytest
+  - rest
+  - graphql
+  - linux
+
+# ---------------------------------------------------------------------------
+# Mots-clés à exclure
+# Une offre contenant l'un de ces mots-clés sera rejetée.
+# ---------------------------------------------------------------------------
+exclude_keywords:
+  - senior
+  - staff
+  - principal
+  - lead
+  - manager
+  - architect
+  - architecte
+  - confirmé
+  - confirmé(e)
+  - expérimenté
+  - 5 ans
+  - 6 ans
+  - 7 ans
+  - 8 ans
+  - freelance
+  - formation
+  - internship
+  - stage
+  - alternance
+  - alternant
+  - apprenti
+
+# ---------------------------------------------------------------------------
+# Entreprises à ignorer systématiquement (liste noire)
+# ---------------------------------------------------------------------------
+blacklist_companies: []
+
+# ---------------------------------------------------------------------------
+# Paramètres généraux
+# ---------------------------------------------------------------------------
+max_apply_per_run: 10
+dry_run: true   # true = ne postule pas automatiquement (mode veille)
+
+# ---------------------------------------------------------------------------
+# Source : Indeed
+# Adaptez les URLs à votre métier et vos villes cibles.
+# ---------------------------------------------------------------------------
+indeed:
+  enabled: true
+  max_pages_per_run: 1
+  search_queries:
+    - url: "https://fr.indeed.com/jobs?q=developpeur+python&l=Paris+%2875%29&radius=30"
+      label: "Python Paris"
+      max_jobs: 8
+    - url: "https://fr.indeed.com/jobs?q=developpeur+python&l=Lyon+%2869%29&radius=25"
+      label: "Python Lyon"
+      max_jobs: 4
+    - url: "https://fr.indeed.com/jobs?q=developpeur+python&l=Bordeaux+%2833%29&radius=25"
+      label: "Python Bordeaux"
+      max_jobs: 2
+
+# ---------------------------------------------------------------------------
+# Source : Welcome to the Jungle (WTTJ)
+# Nécessite une session Chrome connectée au compte WTTJ.
+# ---------------------------------------------------------------------------
+wttj:
+  jobs_matches_url: "https://www.welcometothejungle.com/fr/jobs-matches"
+  max_pages: 3
+  max_jobs: 50
+
+# ---------------------------------------------------------------------------
+# Source : HelloWork
+# Adaptez les URLs à votre métier.
+# ---------------------------------------------------------------------------
+hellowork:
+  enabled: true
+  limit_per_run: 10
+  max_jobs: 20
+  search_urls:
+    - label: "Python Paris"
+      url: "https://www.hellowork.com/fr-fr/emploi/metier_developpeur-python-ville_paris-75000.html"
+      max_jobs: 10
+    - label: "Backend Paris"
+      url: "https://www.hellowork.com/fr-fr/emploi/metier_developpeur-backend-ville_paris-75000.html"
+      max_jobs: 10
+
+# ---------------------------------------------------------------------------
+# Source : LinkedIn
+# Nécessite une connexion Chrome interactive (--wttj-interactive).
+# ---------------------------------------------------------------------------
+linkedin:
+  enabled: false
+  interactive: true
+  limit_per_run: 3
+  search_urls:
+    - label: "Python Paris"
+      url: "https://www.linkedin.com/jobs/search/?keywords=python+junior&location=Paris%2C+France&f_TPR=r86400"
+      max_jobs: 10
+
+# ---------------------------------------------------------------------------
+# Pipeline de collecte
+# pending_limit : si plus de N offres non traitées → arrêt du run
+# ---------------------------------------------------------------------------
+pipeline:
+  target_results: 5
+  max_total_jobs: 60
+  pending_limit: 20
+  try_complementary_sources: true
+  max_indeed_pages_complementary: 1
+  enable_hellowork_complementary: true
+  hellowork_limit_complementary: 10
+
+# ---------------------------------------------------------------------------
+# Export des résultats
+# ---------------------------------------------------------------------------
+export:
+  balanced_by_source: true
+  max_per_source: 3
+  target_per_source: 3
+  global_target: 10
+  allow_source_fallback: true
+  include_statuses:
+    - selected
+    - review
+  source_order:
+    - wttj
+    - hellowork
+    - linkedin
+    - indeed

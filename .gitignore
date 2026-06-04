@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+.pytest_cache/
+
+# Virtual environments
+.venv*/
+venv/
+env/
+
+# Variables d'environnement
+.env
+.env.local
+.env.*
+!.env.example
+
+# Données personnelles (PII)
+app/data/cv/*
+!app/data/cv/.gitkeep
+
+# Session Chrome persistante (contient cookies d'auth — ne pas commiter)
+app/data/chrome_profile/
+
+# Fichiers générés à chaque run (données runtime)
+app/data/jobs/jobs_raw.json
+app/data/jobs/selected_jobs.json
+app/data/jobs/selected_urls.txt
+app/data/tracking.csv
+app/data/run_stats.json
+
+# Rapports générés
+app/data/exports/report_*.md
+app/data/exports/*
+!app/data/exports/.gitkeep
+
+# Logs et backups runtime
+app/data/logs/*
+!app/data/logs/.gitkeep
+app/data/backups/*
+!app/data/backups/.gitkeep
+app/config/backups/*
+!app/config/backups/.gitkeep
+
+# Artefacts WebDriver
+downloaded_files/
+
+# Logs génériques
+*.log
+
+# Profil candidat (données personnelles — copier depuis .example.yaml)
+app/config/candidate_profile.yaml
+
+# Outils externes (pas du code core)
+Jobs_Applier_AI_Agent_AIHawk/
+Resume-Matcher/
+
+# Claude Code (outil de développement — non destiné au repo partagé)
+.claude/
+CLAUDE.md
+
+# Documentation interne avec données personnelles (non destinée au repo public)
+docs/share-checklist.md

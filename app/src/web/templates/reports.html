@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% set active_page = "reports" %}
+
+{% block content %}
+
+<h1>Rapports</h1>
+
+{% if not files %}
+<div class="empty-state">
+  <div class="icon">📂</div>
+  <h2>Aucun rapport disponible</h2>
+  <p>Les rapports sont générés automatiquement après chaque run.</p>
+  <p>Utilisez <a href="/">Recalculer scoring + rapport</a> ou lancez un run complet.</p>
+</div>
+
+{% else %}
+
+{# ── Sélecteur ── #}
+<div class="report-selector">
+  <label for="reportSelect" style="font-size:.86rem;font-weight:600;color:#374151">Rapport :</label>
+  <select id="reportSelect" onchange="loadReport(this.value)">
+    {% for fn in files %}
+    <option value="{{ fn }}" {% if fn == selected %}selected{% endif %}>
+      {{ fn | replace('report_', '') | replace('.md', '') }}
+      {% if loop.first %}(dernier){% endif %}
+    </option>
+    {% endfor %}
+  </select>
+  {% if selected %}
+  <span class="report-path">{{ export_dir }}\{{ selected }}</span>
+  {% endif %}
+</div>
+
+{# ── Contenu du rapport ── #}
+{% if not raw %}
+<div class="alert alert-warning">Impossible de lire le fichier rapport sélectionné.</div>
+
+{% elif html %}
+<div class="report-body">{{ html | safe }}</div>
+
+{% else %}
+{# Fallback : affichage brut ── #}
+<div class="alert alert-info" style="margin-bottom:12px">
+  Le rendu Markdown n'est pas disponible. Contenu brut affiché.
+</div>
+<pre class="report-raw">{{ raw }}</pre>
+{% endif %}
+
+{% endif %}
+
+<script>
+function loadReport(filename) {
+  if (filename) {
+    window.location.href = '/reports?file=' + encodeURIComponent(filename);
+  }
+}
+</script>
+
+{% endblock %}

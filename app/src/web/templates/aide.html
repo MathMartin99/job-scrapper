@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% set active_page = "aide" %}
+
+{% block content %}
+
+<style>
+  .aide-section { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; padding: 22px 28px; margin-bottom: 18px; }
+  .aide-section h2 { font-size: 1rem; font-weight: 700; color: #1e1b4b; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #f3f4f6; }
+  .aide-section h3 { font-size: .9rem; font-weight: 700; color: #374151; margin: 16px 0 6px; }
+  .aide-section p  { font-size: .88rem; color: #374151; line-height: 1.7; margin-bottom: 8px; }
+  .aide-section ul { padding-left: 20px; margin-bottom: 8px; }
+  .aide-section li { font-size: .88rem; color: #374151; line-height: 1.7; margin-bottom: 3px; }
+  .aide-section a  { color: #4338ca; text-decoration: none; font-weight: 600; }
+  .aide-section a:hover { text-decoration: underline; }
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+  .status-card { border-radius: 8px; border: 1px solid #e5e7eb; padding: 12px 14px; }
+  .status-card .label { font-size: .82rem; font-weight: 700; margin-bottom: 4px; }
+  .status-card .desc  { font-size: .8rem; color: #6b7280; line-height: 1.5; }
+  .s-selected   { border-left: 4px solid #4338ca; }
+  .s-review     { border-left: 4px solid #d97706; }
+  .s-rejected   { border-left: 4px solid #9ca3af; }
+  .s-skipped    { border-left: 4px solid #d1d5db; }
+  .s-applied    { border-left: 4px solid #16a34a; }
+  .s-ignored    { border-left: 4px solid #6b7280; }
+  .s-man-rej    { border-left: 4px solid #dc2626; }
+  .s-already    { border-left: 4px solid #4338ca; }
+  .s-company-rej{ border-left: 4px solid #f59e0b; }
+  .step-list    { counter-reset: step; list-style: none; padding: 0; }
+  .step-list li { counter-increment: step; display: flex; gap: 12px; margin-bottom: 12px; }
+  .step-list li::before {
+    content: counter(step); flex-shrink: 0;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #4338ca; color: #fff;
+    font-size: .78rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step-text { font-size: .88rem; color: #374151; line-height: 1.65; padding-top: 3px; }
+  .tip-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-top: 10px; }
+  .tip-box p { margin: 0; font-size: .84rem; color: #1e40af; }
+  .warn-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-top: 10px; }
+  .warn-box p { margin: 0; font-size: .84rem; color: #92400e; }
+  .source-status-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: .85rem; }
+  .source-status-table th { background: #f9fafb; padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  .source-status-table td { padding: 7px 12px; border-bottom: 1px solid #f3f4f6; }
+</style>
+
+<h1>Aide &amp; Guide de démo</h1>
+
+{# ═══════════════════════════════════════════════════════════
+   1. À QUOI SERT CET OUTIL
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>🎯 À quoi sert job-bot ?</h2>
+  <p>
+    <strong>job-bot</strong> est un assistant personnel qui cherche automatiquement des offres d'emploi
+    à votre place. Chaque matin, il parcourt quatre sites (Welcome to the Jungle, HelloWork, LinkedIn et Indeed),
+    lit les descriptions de postes, et vous propose uniquement les offres qui correspondent
+    à votre profil DevOps / Cloud.
+  </p>
+  <p>
+    Au lieu de scrollerinterminablement sur les sites d'emploi, vous arrivez directement
+    à une liste de 5 à 12 offres pertinentes, classées par score.
+  </p>
+  <p>L'outil tourne entièrement sur votre ordinateur. Aucune donnée n'est envoyée à l'extérieur.</p>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   2. CE QU'EST UN RUN
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>▶ Qu'est-ce qu'un run ?</h2>
+  <p>
+    Un <strong>run</strong> est une exécution complète du pipeline. Il réalise en une seule commande :
+  </p>
+  <ol class="step-list">
+    <li><span class="step-text"><strong>Collecte</strong> — parcourt chaque site d'emploi et récupère les offres publiées récemment.</span></li>
+    <li><span class="step-text"><strong>Matching</strong> — analyse chaque offre, lui attribue un score, et décide si elle est pertinente.</span></li>
+    <li><span class="step-text"><strong>Export</strong> — génère un rapport Markdown et une liste d'URLs des meilleures offres.</span></li>
+  </ol>
+  <p>Durée d'un run complet : <strong>3 à 10 minutes</strong>. Le navigateur Chrome s'ouvre pour WTTJ et LinkedIn.</p>
+
+  <div class="tip-box">
+    <p>💡 Sur cette page, le bouton <strong>🔄 Recalculer scoring + rapport</strong> relance uniquement
+    le matching et l'export — sans toucher aux sites web. C'est rapide (10–30 secondes) et utile
+    pour voir l'effet d'un changement de paramètres.</p>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   3. LE MATCHING — COMMENT ÇA MARCHE
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>🔢 Le matching — comment les offres sont notées</h2>
+  <p>
+    Pour chaque offre collectée, l'outil lit le titre et la description complète, puis calcule
+    un <strong>score</strong> en fonction de vos critères.
+  </p>
+
+  <h3>Ce qui rapporte des points</h3>
+  <ul>
+    <li>Le titre du poste correspond (DevOps, Cloud Engineer, SRE…) : <strong>+40 pts</strong></li>
+    <li>La localisation est bonne (Paris, Lyon, remote…) : <strong>+10 à +20 pts</strong></li>
+    <li>Le mode de travail est hybride ou remote : <strong>+6 pts</strong></li>
+    <li>Chaque mot-clé obligatoire détecté (aws, docker, kubernetes…) : <strong>+10 pts chacun</strong></li>
+    <li>Chaque mot-clé secondaire (python, gitlab, helm…) : <strong>+4 pts chacun</strong></li>
+    <li>Annonce très récente (0–2 jours) : <strong>+10 pts</strong></li>
+    <li>Annonce récente (3–7 jours) : <strong>+5 pts</strong></li>
+  </ul>
+
+  <h3>Ce qui fait rejeter une offre automatiquement</h3>
+  <ul>
+    <li>Mots de séniorité dans le titre : <em>senior, lead, staff, confirmé, architecte…</em></li>
+    <li>Contrat non CDI : alternance, stage, freelance</li>
+    <li>Expérience exigée explicitement supérieure à 3 ans</li>
+    <li>Aucun mot-clé obligatoire (aws, terraform, docker, kubernetes, ansible) présent</li>
+    <li>Score total trop bas (&lt; 40 points)</li>
+  </ul>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   4. LES STATUTS
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>🏷 Les statuts des offres</h2>
+
+  <h3>Statuts automatiques — attribués par l'outil</h3>
+  <div class="status-grid">
+    <div class="status-card s-selected">
+      <div class="label">⭐ selected</div>
+      <div class="desc">Offre recommandée. Correspond bien au profil : titre DevOps/Cloud, mots-clés, localisation, score suffisant.</div>
+    </div>
+    <div class="status-card s-review">
+      <div class="label">🔍 review</div>
+      <div class="desc">À examiner manuellement. Partiellement compatible — titre ambigu, un seul must-have, ou offre LinkedIn en cours de validation.</div>
+    </div>
+    <div class="status-card s-rejected">
+      <div class="label">❌ rejected</div>
+      <div class="desc">Rejetée automatiquement. Ne correspond pas au profil (senior, alternance, trop d'années d'expérience, score trop bas…).</div>
+    </div>
+    <div class="status-card s-skipped">
+      <div class="label">⏭ skipped</div>
+      <div class="desc">Ignorée lors du matching car déjà traitée manuellement dans un run précédent.</div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:18px">Statuts manuels — que vous attribuez</h3>
+  <div class="status-grid">
+    <div class="status-card s-applied">
+      <div class="label">✅ applied</div>
+      <div class="desc">Vous avez envoyé votre candidature pour ce poste.</div>
+    </div>
+    <div class="status-card s-ignored">
+      <div class="label">🙈 ignored</div>
+      <div class="desc">Vous avez vu l'offre mais choisi de ne pas postuler.</div>
+    </div>
+    <div class="status-card s-man-rej">
+      <div class="label">❌ manually_rejected</div>
+      <div class="desc">Pas pertinent selon votre jugement (l'outil avait tort).</div>
+    </div>
+    <div class="status-card s-already">
+      <div class="label">🔁 already_applied</div>
+      <div class="desc">Vous aviez déjà postulé à cette offre avant.</div>
+    </div>
+    <div class="status-card s-company-rej">
+      <div class="label">🚫 rejected_by_company</div>
+      <div class="desc">L'entreprise a refusé votre candidature.</div>
+    </div>
+  </div>
+
+  <div class="tip-box" style="margin-top:14px">
+    <p>💡 Les offres avec un statut manuel ne sont plus jamais remontées lors des runs suivants.</p>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   5. COMMENT TRAITER UNE OFFRE
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>✏️ Comment traiter une offre</h2>
+  <ol class="step-list">
+    <li><span class="step-text">Allez sur la page <a href="/">Run courant</a>.</span></li>
+    <li><span class="step-text">Cliquez sur le titre d'une offre pour l'ouvrir sur le site d'emploi.</span></li>
+    <li><span class="step-text">Si l'offre vous intéresse, choisissez <strong>✅ Postulé</strong> dans le menu déroulant. Sinon, choisissez <strong>🙈 Ignoré</strong> ou <strong>❌ Pas pertinent</strong>.</span></li>
+    <li><span class="step-text">Cliquez sur <strong>💾 Enregistrer les décisions</strong> en bas de la page.</span></li>
+    <li><span class="step-text">L'offre disparaît de la liste au rechargement suivant.</span></li>
+  </ol>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   6. LES RAPPORTS
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>📄 Comment consulter les rapports</h2>
+  <p>
+    Après chaque run, un rapport est généré automatiquement.
+    Allez sur <a href="/reports">Rapports</a> pour le consulter.
+  </p>
+  <ul>
+    <li>Le sélecteur en haut vous permet de choisir la date du rapport.</li>
+    <li>Le rapport affiche un tableau résumé par source (WTTJ, HelloWork, LinkedIn, Indeed) avec le nombre d'offres et le statut de chaque source.</li>
+    <li>Chaque offre retenue a une fiche détaillée avec le score, les mots-clés détectés et un résumé de la description.</li>
+    <li>Une section "Doublons potentiels" signale si la même offre apparaît sur plusieurs sites.</li>
+  </ul>
+  <div class="tip-box">
+    <p>💡 Les rapports sont des fichiers Markdown dans <code>app/data/exports/</code>. Vous pouvez les ouvrir dans n'importe quel éditeur de texte ou application de lecture Markdown.</p>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   7. LES PARAMÈTRES
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>⚙️ Comment modifier les paramètres</h2>
+  <p>
+    Allez sur <a href="/settings">Paramètres</a> pour ajuster votre profil.
+  </p>
+  <h3>Ce que vous pouvez modifier</h3>
+  <ul>
+    <li><strong>Titres cibles</strong> — les intitulés de postes recherchés (DevOps Engineer, SRE, Cloud Engineer…)</li>
+    <li><strong>Localisations</strong> — les villes acceptées (Paris, Lyon, remote…)</li>
+    <li><strong>Mots-clés obligatoires</strong> — l'offre doit en contenir au moins un (aws, docker, kubernetes…)</li>
+    <li><strong>Mots-clés secondaires</strong> — rapportent des points bonus sans être obligatoires</li>
+    <li><strong>Mots-clés exclus</strong> — une offre contenant ces mots dans son titre sera rejetée</li>
+    <li><strong>Sources actives</strong> — activer ou désactiver WTTJ, HelloWork, LinkedIn, Indeed</li>
+    <li><strong>Limites par source</strong> — nombre d'offres à collecter par site à chaque run</li>
+  </ul>
+  <div class="warn-box">
+    <p>⚠️ Une sauvegarde automatique du profil est créée dans <code>app/config/backups/</code> avant chaque modification. En cas d'erreur, vous pouvez restaurer manuellement.</p>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   8. AUTHENTIFICATION — QUE FAIRE
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>🔐 Que faire si WTTJ ou LinkedIn demandent une connexion ?</h2>
+
+  <h3>Welcome to the Jungle (WTTJ)</h3>
+  <p>
+    WTTJ nécessite un compte connecté pour accéder à la page "jobs-matches" personnalisée.
+    Si la session a expiré, une fenêtre Chrome s'ouvre — connectez-vous manuellement,
+    puis appuyez sur Entrée dans le terminal pour continuer.
+  </p>
+  <p>Le pipeline continue sans WTTJ si la connexion échoue — les offres HelloWork, LinkedIn et Indeed sont toujours collectées.</p>
+
+  <h3>LinkedIn</h3>
+  <p>
+    LinkedIn ouvre une fenêtre Chrome en mode interactif. Connectez-vous si demandé,
+    puis appuyez sur Entrée. Si LinkedIn affiche un CAPTCHA ou bloque la navigation,
+    le pipeline continue sans LinkedIn.
+  </p>
+
+  <h3>Indeed</h3>
+  <p>
+    Indeed est public (pas de compte nécessaire), mais il bloque parfois l'accès automatique.
+    Si cela arrive, le pipeline continue avec les offres des autres sources.
+    Ce blocage est temporaire — il disparaît en quelques heures.
+  </p>
+
+  <h3>HelloWork</h3>
+  <p>
+    HelloWork est totalement public et ne nécessite jamais de connexion. C'est la source
+    la plus fiable au quotidien.
+  </p>
+
+  <table class="source-status-table">
+    <thead>
+      <tr><th>Source</th><th>Connexion requise</th><th>Si bloquée</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>WTTJ</td><td>Oui (compte WTTJ)</td><td>Pipeline continue sans WTTJ</td></tr>
+      <tr><td>HelloWork</td><td>Non</td><td>N/A — très stable</td></tr>
+      <tr><td>LinkedIn</td><td>Oui (compte LinkedIn)</td><td>Pipeline continue sans LinkedIn</td></tr>
+      <tr><td>Indeed</td><td>Non</td><td>Pipeline continue sans Indeed</td></tr>
+    </tbody>
+  </table>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   9. MAINTENANCE
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>🧹 Maintenance — quand et pourquoi nettoyer ?</h2>
+  <p>
+    Au fil des runs, la base accumule des offres rejetées automatiquement. La page
+    <a href="/maintenance">Maintenance</a> permet de les supprimer pour garder
+    la base légère.
+  </p>
+  <ul>
+    <li><strong>Analysez d'abord</strong> — le bouton "Analyser (dry-run)" affiche ce qui serait supprimé sans rien modifier.</li>
+    <li><strong>Appliquez ensuite</strong> — seulement si le résultat de l'analyse vous convient.</li>
+    <li><strong>Vos données personnelles sont protégées</strong> — les offres que vous avez traitées manuellement (applied, ignored…) ne sont jamais supprimées.</li>
+    <li><strong>Des sauvegardes automatiques</strong> sont créées dans <code>app/data/backups/</code> avant toute suppression.</li>
+  </ul>
+  <p>
+    Le nettoyage est utile si le run est bloqué parce qu'il y a trop d'offres non traitées
+    (le seuil est configurable dans <a href="/settings">Paramètres</a>).
+  </p>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   10. RACCOURCIS
+════════════════════════════════════════════════════════════ #}
+<div class="aide-section">
+  <h2>⌨️ Raccourcis utiles</h2>
+  <p>Sur la page <a href="/">Run courant</a> :</p>
+  <ul>
+    <li>Utilisez les <strong>onglets sources</strong> (WTTJ / HelloWork / LinkedIn / Indeed) pour filtrer les offres par plateforme.</li>
+    <li>Utilisez les <strong>boutons de tri</strong> pour classer par score, date de publication ou statut.</li>
+    <li>Passez la souris sur un titre long — l'info-bulle affiche le titre original complet.</li>
+  </ul>
+  <p>Sur la page <a href="/history">Historique</a> :</p>
+  <ul>
+    <li>La barre de recherche filtre en temps réel sur le titre, l'entreprise et la source.</li>
+    <li>Les onglets de statut permettent de voir uniquement les offres "Postulé", "Ignoré", etc.</li>
+  </ul>
+</div>
+
+{% endblock %}

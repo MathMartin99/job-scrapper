@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% set active_page = "history" %}
+
+{% block content %}
+
+<h1>Historique</h1>
+<p class="section-meta" id="histMeta">{{ rows|length }} offre(s) dans tracking.csv</p>
+
+{% if not rows %}
+<div class="empty-state">
+  <div class="icon">📭</div>
+  <h2>Historique vide</h2>
+  <p>Aucune offre dans tracking.csv. Lancez un run pour commencer.</p>
+</div>
+
+{% else %}
+
+{# ── Filtres ── #}
+<div class="filter-tabs" style="margin-bottom:12px">
+  <button class="filter-tab active" data-status="all" onclick="filterHist('all', this)">Tous</button>
+  <button class="filter-tab" data-status="applied"             onclick="filterHist('applied', this)">✅ Postulé</button>
+  <button class="filter-tab" data-status="already_applied"     onclick="filterHist('already_applied', this)">🔁 Déjà postulé</button>
+  <button class="filter-tab" data-status="ignored"             onclick="filterHist('ignored', this)">🙈 Ignoré</button>
+  <button class="filter-tab" data-status="manually_rejected"   onclick="filterHist('manually_rejected', this)">❌ Pas pertinent</button>
+  <button class="filter-tab" data-status="rejected_by_company" onclick="filterHist('rejected_by_company', this)">🚫 Refus entreprise</button>
+  <button class="filter-tab" data-status="selected"            onclick="filterHist('selected', this)">Selected</button>
+  <button class="filter-tab" data-status="review"              onclick="filterHist('review', this)">Review</button>
+  <button class="filter-tab" data-status="rejected"            onclick="filterHist('rejected', this)">Rejeté</button>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="histSearch" class="search-input" placeholder="Rechercher par titre, entreprise, source…"
+         oninput="filterHist(null, null)" autocomplete="off">
+  <span style="font-size:.82rem;color:#6b7280;align-self:center" id="histCount">{{ rows|length }} lignes affichées</span>
+</div>
+
+<div class="table-wrap">
+  <table id="histTable">
+    <thead>
+      <tr>
+        <th>Titre</th>
+        <th>Entreprise</th>
+        <th>Source</th>
+        <th>Statut</th>
+        <th>Score</th>
+        <th>Localisation</th>
+        <th>Traité le</th>
+        <th>URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set status   = row.get('status', '') %}
+      {% set platform = row.get('platform', '') %}
+      <tr data-status="{{ status }}" data-text="{{ (row.get('title','') ~ ' ' ~ row.get('company','') ~ ' ' ~ platform)|lower }}">
+        <td title="{{ row.get('title', '') }}">{{ row.get('display_title', row.get('title', '—')) }}</td>
+        <td>{{ row.get('company', '—') }}</td>
+        <td>{{ platform_labels.get(platform, platform|upper or '?') }}</td>
+        <td><span class="chip chip-{{ status }}">{{ status or '—' }}</span></td>
+        <td>{{ row.get('score', '—') }}</td>
+        <td>{{ row.get('location', '—') }}</td>
+        <td style="white-space:nowrap">{{ row.get('applied_at', '—') }}</td>
+        <td>
+          {% if row.get('url') %}<a href="{{ row.get('url') }}" target="_blank" rel="noopener">Ouvrir ↗</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+let _histStatus = 'all';
+
+function filterHist(status, btn) {
+  if (status !== null) {
+    _histStatus = status;
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  const query = (document.getElementById('histSearch')?.value || '').toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('#histTable tbody tr').forEach(row => {
+    const matchStatus = _histStatus === 'all' || row.dataset.status === _histStatus;
+    const matchQuery  = !query || (row.dataset.text || '').includes(query);
+    const show = matchStatus && matchQuery;
+    row.style.display = show ? '' : 'none';
+    if (show) shown++;
+  });
+  const el = document.getElementById('histCount');
+  if (el) el.textContent = shown + ' ligne(s) affichée(s)';
+}
+</script>
+
+{% endif %}
+
+{% endblock %}

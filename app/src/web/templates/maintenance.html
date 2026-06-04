@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% set active_page = "maintenance" %}
+
+{% block content %}
+
+<h1>Maintenance</h1>
+
+{# ── Pending status ── #}
+{% if pending_count > pending_limit %}
+<div class="alert alert-danger">
+  ⛔ <strong>{{ pending_count }} offres non traitées</strong> — seuil {{ pending_limit }} dépassé.
+  Le run complet est bloqué. Traitez les offres dans <a href="/">Run courant</a>,
+  ou nettoyez la base ci-dessous, ou augmentez le seuil dans <a href="/settings">Paramètres</a>.
+</div>
+{% elif pending_count > 0 %}
+<div class="alert alert-info">
+  📋 <strong>{{ pending_count }}</strong> offre(s) en attente de traitement (seuil&nbsp;: {{ pending_limit }}).
+</div>
+{% else %}
+<div class="alert alert-success">
+  ✅ Aucune offre en attente — run complet débloqué.
+</div>
+{% endif %}
+
+{# ── Nettoyage ── #}
+<div class="settings-section">
+  <h2>🧹 Nettoyage de la base</h2>
+
+  <p style="font-size:.88rem;color:#374151;margin-bottom:12px;line-height:1.65">
+    Le nettoyage <strong>supprime</strong> les offres non traitées et
+    <strong>conserve uniquement</strong> les offres déjà traitées manuellement
+    (<em>applied, ignored, manually_rejected, already_applied, rejected_by_company</em>).
+    <br>
+    Aucun statut n'est jamais modifié — seules des lignes sont supprimées.
+    Des sauvegardes horodatées sont créées automatiquement avant toute suppression.
+  </p>
+
+  <p style="font-size:.82rem;color:#6b7280;margin-bottom:16px">
+    Fichiers nettoyés : <code>jobs_raw.json</code> · <code>tracking.csv</code> ·
+    <code>selected_jobs.json</code> · <code>selected_urls.txt</code>
+  </p>
+
+  <div class="actions">
+    <div class="action-group">
+      <button class="btn btn-secondary" id="analyzeBtn" onclick="analyzeCleanup(this)">
+        🔍 Analyser (dry-run)
+      </button>
+      <span class="action-hint">Affiche ce qui sera supprimé sans rien modifier</span>
+    </div>
+    <div class="action-group">
+      <button class="btn btn-danger" id="applyCleanupBtn" onclick="applyCleanup(this)" disabled>
+        🗑 Appliquer le nettoyage
+      </button>
+      <span class="action-hint" id="applyHint">Analysez d'abord pour activer ce bouton</span>
+    </div>
+  </div>
+
+  <div id="cleanupResult" style="display:none;margin-top:16px"></div>
+</div>
+
+<script>
+let _analyzed = false;
+
+async function analyzeCleanup(btn) {
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyse…';
+  const resultEl = document.getElementById('cleanupResult');
+  resultEl.style.display = 'none';
+
+  try {
+    const r    = await fetch('/api/cleanup/analyze');
+    const data = await r.json();
+
+    if (data.error) {
+      resultEl.innerHTML = `<div class="alert alert-danger">❌ ${data.error}</div>`;
+    } else {
+      const jr     = data.jobs_raw;
+      const tr     = data.tracking;
+      const hasWork = jr.to_remove > 0 || tr.to_remove > 0;
+      const cls    = hasWork ? 'alert-warning' : 'alert-success';
+
+      resultEl.innerHTML = `
+        <div class="alert ${cls}">
+          <strong>jobs_raw.json :</strong>
+          ${jr.total} offres au total —
+          <strong>${jr.to_remove} supprimables</strong>,
+          ${jr.to_keep} conservées (statut manuel protégé).
+          <br>
+          <strong>tracking.csv :</strong>
+          ${tr.total} lignes au total —
+          <strong>${tr.to_remove} supprimables</strong>,
+          ${tr.to_keep} conservées (statut manuel protégé).
+          ${hasWork ? '<br><em style="font-size:.82rem">selected_jobs.json et selected_urls.txt seront également nettoyés.</em>' : ''}
+        </div>`;
+
+      if (hasWork) {
+        document.getElementById('applyCleanupBtn').disabled = false;
+        document.getElementById('applyHint').textContent =
+          `${jr.to_remove} offre(s) + ${tr.to_remove} ligne(s) tracking seront supprimées (sauvegardes auto)`;
+        _analyzed = true;
+      }
+    }
+    resultEl.style.display = 'block';
+  } catch (e) {
+    resultEl.innerHTML = `<div class="alert alert-danger">Erreur réseau : ${e}</div>`;
+    resultEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔍 Analyser (dry-run)';
+}
+
+async function applyCleanup(btn) {
+  if (!_analyzed) return;
+  if (!confirm(
+    'Confirmer le nettoyage ?\n\n' +
+    'Des sauvegardes seront créées dans app/data/backups/ avant toute suppression.\n' +
+    'Les offres traitées manuellement (applied, ignored, etc.) seront conservées.\n\n' +
+    'Cette action est irréversible sans les sauvegardes.'
+  )) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Nettoyage…';
+  const resultEl = document.getElementById('cleanupResult');
+
+  try {
+    const r    = await fetch('/api/cleanup/apply', { method: 'POST' });
+    const data = await r.json();
+
+    if (data.error) {
+      resultEl.innerHTML = `<div class="alert alert-danger">❌ ${data.error}</div>`;
+    } else if (data.jobs_raw_removed === 0 && data.tracking_removed === 0) {
+      resultEl.innerHTML = `<div class="alert alert-success">✅ Rien à supprimer.</div>`;
+    } else {
+      const backupList = data.backups && data.backups.length
+        ? '<br><small style="font-family:monospace">Sauvegardes : ' + data.backups.join(', ') + '</small>'
+        : '';
+      resultEl.innerHTML = `
+        <div class="alert alert-success">
+          ✅ Nettoyage appliqué.
+          <br>
+          <strong>jobs_raw.json :</strong> ${data.jobs_raw_removed} supprimée(s), ${data.jobs_raw_kept} conservée(s).
+          <br>
+          <strong>tracking.csv :</strong> ${data.tracking_removed} ligne(s) supprimée(s), ${data.tracking_kept} conservée(s).
+          <br>
+          <em>selected_jobs.json et selected_urls.txt nettoyés.</em>
+          ${backupList}
+        </div>`;
+      _analyzed = false;
+      document.getElementById('applyCleanupBtn').disabled = true;
+      document.getElementById('applyHint').textContent = 'Analysez à nouveau si besoin';
+      // Reload page after 2s to update pending count
+      setTimeout(() => window.location.reload(), 2000);
+    }
+    resultEl.style.display = 'block';
+  } catch (e) {
+    resultEl.innerHTML = `<div class="alert alert-danger">Erreur réseau : ${e}</div>`;
+    resultEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🗑 Appliquer le nettoyage';
+}
+</script>
+
+{% endblock %}

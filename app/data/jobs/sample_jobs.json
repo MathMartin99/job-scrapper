@@ -1,0 +1,29 @@
+[
+  {
+    "id": "job-001",
+    "platform": "test",
+    "company": "Entreprise A",
+    "title": "Ingénieur DevOps Junior",
+    "location": "Paris",
+    "url": "https://example.com/job-001",
+    "description": "Nous recherchons un ingénieur DevOps junior à Paris. Compétences requises : AWS, Terraform, Docker, Kubernetes, Ansible. Expérience : 1 à 2 ans."
+  },
+  {
+    "id": "job-002",
+    "platform": "test",
+    "company": "Entreprise B",
+    "title": "Senior Platform Engineer",
+    "location": "Lyon",
+    "url": "https://example.com/job-002",
+    "description": "Poste senior orienté plateforme, leadership technique, architecture cloud, mentoring et management transverse."
+  },
+  {
+    "id": "job-003",
+    "platform": "test",
+    "company": "Entreprise C",
+    "title": "Cloud Engineer",
+    "location": "Remote",
+    "url": "https://example.com/job-003",
+    "description": "Nous recrutons un Cloud Engineer avec compétences AWS, Terraform, Docker et Python. Une expérience Kubernetes est appréciée."
+  }
+]

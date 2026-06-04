@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% set active_page = "index" %}
+
+{% block content %}
+
+{# ── Bannière succès ── #}
+{% if marked is not none %}
+<div class="alert alert-success">
+  ✅ {{ marked }} décision(s) enregistrée(s) dans tracking.csv.
+</div>
+{% endif %}
+
+{# ── Alerte pending ── #}
+{% if pending_count is defined and pending_limit is defined %}
+{% if pending_count > pending_limit %}
+<div class="alert alert-danger">
+  ⛔ <strong>{{ pending_count }} offres non traitées</strong> dépassent le seuil de {{ pending_limit }}.
+  Le run complet est bloqué. Traitez les offres ci-dessous ou relancez avec <code>--force-run</code>.
+</div>
+{% elif pending_count > 0 %}
+<div class="alert alert-info">
+  📋 <strong>{{ pending_count }}</strong> offre(s) en attente de traitement (seuil&nbsp;: {{ pending_limit }}).
+</div>
+{% endif %}
+{% endif %}
+
+{# ── Sortie dernier run ── #}
+{% if run_state.output and not run_state.running %}
+<div class="alert alert-info">
+  <strong>Dernier run : {{ run_state.command }}</strong>
+  — terminé à {{ run_state.started }}
+  {% if run_state.exit_code is not none %}(code {{ run_state.exit_code }}){% endif %}
+  <div class="run-output">{{ run_state.output }}</div>
+</div>
+{% endif %}
+
+{# ── Run en cours ── #}
+{% if run_state.running %}
+<div class="alert alert-warning">
+  ⏳ <strong>{{ run_state.command }}</strong> en cours depuis {{ run_state.started }}.
+  La page se rafraîchira automatiquement à la fin.
+</div>
+{% endif %}
+
+{# ── Boutons d'action ── #}
+<div class="actions">
+
+  <div class="action-group">
+    <form method="post" action="/run/full">
+      {% set pending_blocked = pending_count is defined and pending_limit is defined and pending_count > pending_limit %}
+      <button type="submit" class="btn btn-warning run-btn"
+          {% if pending_blocked %}disabled title="Trop d'offres non traitées ({{ pending_count }}/{{ pending_limit }})"{% endif %}
+          {% if not pending_blocked %}onclick="return confirm('⚠️  Cette commande ouvre Chrome.\n\nElle lance WTTJ + LinkedIn en mode interactif et peut demander une interaction manuelle (connexion, CAPTCHA).\n\nDurée estimée : 3–10 min.\n\nContinuer ?')"{% endif %}>
+        🚀 Collecter + matcher + exporter
+      </button>
+    </form>
+    <span class="action-hint">Pipeline complet — peut ouvrir Chrome pour WTTJ / LinkedIn</span>
+  </div>
+
+  <div class="action-group">
+    <form method="post" action="/run/matching">
+      <button type="submit" class="btn btn-primary run-btn">
+        🔄 Recalculer scoring + rapport
+      </button>
+    </form>
+    <span class="action-hint">Ne collecte rien — re-score les offres déjà stockées</span>
+  </div>
+
+  <div class="action-group">
+    <form method="post" action="/run/export">
+      <button type="submit" class="btn btn-secondary run-btn">
+        📄 Régénérer rapport seul
+      </button>
+    </form>
+    <span class="action-hint">Reconstruit le rapport depuis le dernier selected_jobs.json</span>
+  </div>
+
+</div>
+
+{# ── Tri ── #}
+<div class="filter-tabs" style="margin-bottom:8px">
+  <span style="font-size:.79rem;color:#6b7280;align-self:center;margin-right:4px">Trier :</span>
+  <button class="filter-tab sort-btn active" onclick="sortJobs('score', this)">Score ↓</button>
+  <button class="filter-tab sort-btn" onclick="sortJobs('recent', this)">Récent d'abord</button>
+  <button class="filter-tab sort-btn" onclick="sortJobs('oldest', this)">Ancien d'abord</button>
+  <button class="filter-tab sort-btn" onclick="sortJobs('source', this)">Source</button>
+  <button class="filter-tab sort-btn" onclick="sortJobs('status', this)">Statut</button>
+</div>
+
+{# ── Filtres par source ── #}
+{% set total = jobs|length %}
+<div class="filter-tabs" id="filterTabs">
+  <button class="filter-tab active" data-filter="all" onclick="filterJobs('all', this)">
+    Toutes ({{ total }})
+  </button>
+  {% for platform_key, label in platform_labels.items() %}
+  {% if counts.get(platform_key, 0) > 0 %}
+  <button class="filter-tab" data-filter="{{ platform_key }}" onclick="filterJobs('{{ platform_key }}', this)">
+    {{ label }} ({{ counts.get(platform_key, 0) }})
+  </button>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{# ── Liste des offres ── #}
+<h1>Offres exploitables — <span id="visibleCount">{{ total }}</span> offre(s)</h1>
+
+{% if not jobs %}
+<div class="empty-state">
+  <div class="icon">🎉</div>
+  <h2>Aucune offre en attente</h2>
+  <p>Toutes les offres ont été traitées, ou le matching n'a pas encore tourné.</p>
+  <p>Utilisez <strong>Recalculer scoring + rapport</strong> pour mettre à jour.</p>
+</div>
+
+{% else %}
+
+<form method="post" action="/mark">
+  <div class="job-list">
+    {% for job in jobs %}
+    {% set jid      = job.get('id', '') %}
+    {% set decision = job.get('decision', '') %}
+    {% set reason   = job.get('reason', '') %}
+    {% set platform = job.get('platform', '') %}
+    {% set score    = job.get('score', 0)|int %}
+    {% set days_ago = job.get('published_days_ago') %}
+
+    <div class="job-card d-{{ decision }}"
+         data-platform="{{ platform }}"
+         data-score="{{ score }}"
+         data-days="{{ days_ago if days_ago is not none else 999999 }}"
+         data-decision="{{ decision }}">
+
+      <div class="job-header">
+        <div class="job-title">
+          <a href="{{ job.get('url', '#') }}" target="_blank" rel="noopener noreferrer"
+             title="{{ job.get('title', '') }}">
+            {{ job.get('display_title', job.get('title', '—')) }}
+          </a>
+        </div>
+        <span class="badge b-{{ decision }}">
+          {% if decision == 'selected' %}⭐ Selected{% else %}🔍 Review{% endif %}
+        </span>
+        <span class="badge b-platform">{{ platform_labels.get(platform, platform|upper) }}</span>
+        <span class="badge b-score">{{ score }} pts</span>
+      </div>
+
+      <div class="job-meta">
+        <span>🏢 {{ job.get('company', '—') }}</span>
+        {% if job.get('location') %}
+        <span>📍 {{ job.get('location') }}</span>
+        {% endif %}
+        {% if days_ago is not none %}
+          {% if days_ago == 0 %}<span>📅 aujourd'hui</span>
+          {% elif days_ago == 1 %}<span>📅 il y a 1 jour</span>
+          {% else %}<span>📅 il y a {{ days_ago }} jours</span>
+          {% endif %}
+        {% elif job.get('published_at_text') %}
+        <span>📅 {{ job.get('published_at_text') }}</span>
+        {% else %}
+        <span style="color:#d1d5db">📅 date inconnue</span>
+        {% endif %}
+        {% if reason and reason != 'selected' %}
+        <span class="reason-pill">{{ reason_labels.get(reason, reason) }}</span>
+        {% endif %}
+      </div>
+
+      {% if jid %}
+      <div class="job-footer">
+        <select name="decision_{{ jid }}" class="decision-select">
+          <option value="">— Choisir une action —</option>
+          <option value="applied">✅ Postulé</option>
+          <option value="ignored">🙈 Ignoré</option>
+          <option value="manually_rejected">❌ Pas pertinent</option>
+          <option value="already_applied">🔁 Déjà postulé</option>
+          <option value="rejected_by_company">🚫 Refus entreprise</option>
+        </select>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="save-bar">
+    <button type="submit" class="btn btn-success">
+      💾 Enregistrer les décisions
+    </button>
+  </div>
+</form>
+
+{% endif %}
+
+<script>
+let _activeFilter = 'all';
+let _activeSort   = 'score';
+
+function filterJobs(platform, btn) {
+  _activeFilter = platform;
+  document.querySelectorAll('#filterTabs .filter-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _applyFilterAndCount();
+}
+
+function sortJobs(sortType, btn) {
+  _activeSort = sortType;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const list = document.querySelector('.job-list');
+  if (!list) return;
+  const cards = Array.from(list.querySelectorAll('.job-card'));
+
+  cards.sort((a, b) => {
+    switch (sortType) {
+      case 'score':
+        return parseInt(b.dataset.score || 0) - parseInt(a.dataset.score || 0);
+      case 'recent':
+        return parseInt(a.dataset.days || 999999) - parseInt(b.dataset.days || 999999);
+      case 'oldest': {
+        const da = parseInt(a.dataset.days || 0);
+        const db = parseInt(b.dataset.days || 0);
+        // Unknowns (999999) go last even for "oldest first"
+        if (da === 999999 && db !== 999999) return 1;
+        if (db === 999999 && da !== 999999) return -1;
+        return db - da;
+      }
+      case 'source':
+        return (a.dataset.platform || '').localeCompare(b.dataset.platform || '');
+      case 'status': {
+        const order = { selected: 0, review: 1 };
+        return (order[a.dataset.decision] ?? 9) - (order[b.dataset.decision] ?? 9);
+      }
+    }
+    return 0;
+  });
+
+  cards.forEach(card => list.appendChild(card));
+  _applyFilterAndCount();
+}
+
+function _applyFilterAndCount() {
+  let visible = 0;
+  document.querySelectorAll('.job-card').forEach(card => {
+    const show = _activeFilter === 'all' || card.dataset.platform === _activeFilter;
+    card.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const el = document.getElementById('visibleCount');
+  if (el) el.textContent = visible;
+}
+</script>
+
+{% endblock %}
